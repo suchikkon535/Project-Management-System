@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useApp } from '@/context/AppContext';
 import PriorityBadge from '@/components/shared/PriorityBadge';
 import StatusDot from '@/components/shared/StatusDot';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -10,7 +9,6 @@ import EditTaskModal from '@/components/tasks/EditTaskModal';
 import { Calendar } from 'lucide-react';
 
 export default function TaskListView({ tasks, projectId }) {
-  const { getWorkerById } = useApp();
   const [editingTask, setEditingTask] = useState(null);
 
   if (tasks.length === 0) {
@@ -37,17 +35,23 @@ export default function TaskListView({ tasks, projectId }) {
         {/* Table Body */}
         <div className="divide-y divide-border">
           {tasks.map((task) => {
-            const assignee = task.assigneeId ? getWorkerById(task.assigneeId) : null;
+            // Use API assignee data
+            const assigneeName = task.assigneeName || task.assignedTo?.[0]?.fullname || null;
+            const assigneeInitials = task.assigneeInitials ||
+              (assigneeName
+                ? assigneeName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+                : null);
+
             const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done';
 
             return (
               <div
-                key={task.id}
+                key={task._id || task.id}
                 onClick={() => setEditingTask(task)}
                 className="grid grid-cols-12 gap-4 px-4 py-3.5 hover:bg-muted/30 cursor-pointer transition-colors items-center"
               >
                 <div className="col-span-5">
-                  <p className={`text-sm font-medium text-foreground truncate ${task.status === 'done' ? 'line-through opacity-60' : ''}`}>
+                  <p className={`text-sm font-medium text-foreground truncate ${task.status === 'done' || task.completed ? 'line-through opacity-60' : ''}`}>
                     {task.title}
                   </p>
                 </div>
@@ -64,10 +68,10 @@ export default function TaskListView({ tasks, projectId }) {
                   </span>
                 </div>
                 <div className="col-span-1">
-                  {assignee && (
+                  {assigneeName && (
                     <Avatar className="h-7 w-7">
                       <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
-                        {assignee.initials}
+                        {assigneeInitials}
                       </AvatarFallback>
                     </Avatar>
                   )}

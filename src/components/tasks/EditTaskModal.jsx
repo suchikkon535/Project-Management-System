@@ -34,7 +34,7 @@ export default function EditTaskModal({ open, onClose, task, projectId }) {
   const { updateTask, deleteTask, workers } = useApp();
   const [status, setStatus] = useState(task.status);
   const [priority, setPriority] = useState(task.priority);
-  const [assigneeId, setAssigneeId] = useState(task.assigneeId || '');
+  const [assigneeId, setAssigneeId] = useState(task.assigneeId || task.assignedTo?.[0]?.fullname || '');
 
   const {
     register,
@@ -46,7 +46,7 @@ export default function EditTaskModal({ open, onClose, task, projectId }) {
     defaultValues: {
       title: task.title,
       description: task.description || '',
-      dueDate: task.dueDate || '',
+      dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
     },
   });
 
@@ -55,16 +55,16 @@ export default function EditTaskModal({ open, onClose, task, projectId }) {
       reset({
         title: task.title,
         description: task.description || '',
-        dueDate: task.dueDate || '',
+        dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
       });
       setStatus(task.status);
       setPriority(task.priority);
-      setAssigneeId(task.assigneeId || '');
+      setAssigneeId(task.assigneeId || task.assignedTo?.[0]?.fullname || '');
     }
   }, [task, reset]);
 
   const onSubmit = (data) => {
-    updateTask(task.id, {
+    updateTask(task._id || task.id, {
       ...data,
       status,
       priority,
@@ -74,7 +74,7 @@ export default function EditTaskModal({ open, onClose, task, projectId }) {
   };
 
   const handleDelete = () => {
-    deleteTask(task.id);
+    deleteTask(task._id || task.id);
     onClose();
   };
 

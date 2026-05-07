@@ -1,31 +1,59 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
+import { fetchTasks } from '@/lib/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, List, Settings, Plus, ArrowLeft } from 'lucide-react';
+import { LayoutGrid, List, Plus, ArrowLeft, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import KanbanBoard from '@/components/tasks/KanbanBoard';
 import TaskListView from '@/components/tasks/TaskListView';
 import WorkersList from '@/components/workers/WorkersList';
 import CreateTaskModal from '@/components/tasks/CreateTaskModal';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 
 export default function ProjectDetailPage({ params }) {
   const resolvedParams = use(params);
-  const { getProjectById, getProjectTasks, updateProject } = useApp();
+  const projectId = resolvedParams.id;
+
+  const { getProjectById, updateProject, projectsLoading } = useApp();
   const [viewMode, setViewMode] = useState('kanban');
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [activeTab, setActiveTab] = useState('tasks');
 
-  const project = getProjectById(resolvedParams.id);
+  // Project-specific task fetching
+  const [projectTasks, setProjectTasks] = useState([]);
+  const [tasksLoading, setTasksLoading] = useState(true);
+  const [tasksError, setTasksError] = useState(null);
 
-  if (!project) {
-    notFound();
+  const loadProjectTasks = useCallback(async () => {
+    try {
+      setTasksLoading(true);
+      setTasksError(null);
+      const data = await fetchTasks(projectId);
+      setProjectTasks(data);
+    } catch (err) {
+      console.error('Failed to load project tasks:', err);
+      setTasksError(err.message);
+    } finally {
+      setTasksLoading(false);
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    loadProjectTasks();
+  }, [loadProjectTasks]);
+
+  const project = getProjectById(projectId);
+
+  // If projects are still loading, show a loading state
+  if (projectsLoading || !project) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
-
-  const projectTasks = getProjectTasks(project.id);
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
@@ -108,10 +136,29 @@ export default function ProjectDetailPage({ params }) {
         </div>
 
         <TabsContent value="tasks" className="mt-4">
-          {viewMode === 'kanban' ? (
-            <KanbanBoard tasks={projectTasks} projectId={project.id} />
+          {tasksLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <span className="ml-2 text-sm text-muted-foreground">Loading tasks...</span>
+            </div>
+          ) : tasksError ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                <AlertCircle className="h-6 w-6 text-red-500" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-foreground">Failed to load tasks</p>
+                <p className="text-xs text-muted-foreground mt-1">{tasksError}</p>
+              </div>
+              <Button onClick={loadProjectTasks} variant="outline" className="rounded-xl gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Retry
+              </Button>
+            </div>
+          ) : viewMode === 'kanban' ? (
+            <KanbanBoard tasks={projectTasks} projectId={project._id} />
           ) : (
-            <TaskListView tasks={projectTasks} projectId={project.id} />
+            <TaskListView tasks={projectTasks} projectId={project._id} />
           )}
         </TabsContent>
 
@@ -127,7 +174,7 @@ export default function ProjectDetailPage({ params }) {
       <CreateTaskModal
         open={showCreateTask}
         onClose={() => setShowCreateTask(false)}
-        projectId={project.id}
+        projectId={project._id}
       />
     </div>
   );
@@ -135,10 +182,10 @@ export default function ProjectDetailPage({ params }) {
 
 function ProjectSettings({ project, onUpdate }) {
   const [name, setName] = useState(project.name);
-  const [description, setDescription] = useState(project.description);
+  const [description, setDescription] = useState(project.description || '');
 
   const handleSave = () => {
-    onUpdate(project.id, { name, description });
+    onUpdate(project._id || project.id, { name, description });
   };
 
   return (

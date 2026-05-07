@@ -1,14 +1,16 @@
 'use client';
 
 import PriorityBadge from '@/components/shared/PriorityBadge';
-import StatusDot from '@/components/shared/StatusDot';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Calendar, GripVertical } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
 
 export default function TaskCard({ task, onClick, isDragging }) {
-  const { getWorkerById } = useApp();
-  const assignee = task.assigneeId ? getWorkerById(task.assigneeId) : null;
+  // Use API assignee data (assignedTo array) with fallback to mock data shape
+  const assigneeName = task.assigneeName || task.assignedTo?.[0]?.fullname || null;
+  const assigneeInitials = task.assigneeInitials ||
+    (assigneeName
+      ? assigneeName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+      : null);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return null;
@@ -61,10 +63,10 @@ export default function TaskCard({ task, onClick, isDragging }) {
             )}
           </div>
 
-          {assignee && (
+          {assigneeName && (
             <Avatar className="h-6 w-6">
               <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
-                {assignee.initials}
+                {assigneeInitials}
               </AvatarFallback>
             </Avatar>
           )}

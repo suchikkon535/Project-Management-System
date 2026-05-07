@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { UserPlus, MoreHorizontal, Mail } from 'lucide-react';
+import { UserPlus, Mail } from 'lucide-react';
 import EmptyState from '@/components/shared/EmptyState';
 import InviteWorkerModal from '@/components/workers/InviteWorkerModal';
 
@@ -84,11 +84,10 @@ export default function WorkersList() {
                 <div className="flex items-center gap-3">
                   <Badge
                     variant={worker.role === 'Admin' ? 'default' : 'secondary'}
-                    className={`rounded-md text-xs ${
-                      worker.role === 'Admin'
+                    className={`rounded-md text-xs ${worker.role === 'Admin'
                         ? 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/10'
                         : ''
-                    }`}
+                      }`}
                   >
                     {worker.role}
                   </Badge>

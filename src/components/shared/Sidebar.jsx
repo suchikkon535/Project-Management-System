@@ -6,15 +6,14 @@ import { useApp } from '@/context/AppContext';
 import {
   Home,
   FolderKanban,
-  ClipboardList,
   Users,
   Plus,
   ChevronLeft,
-  LogOut,
-  Settings,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
@@ -26,7 +25,7 @@ const navItems = [
 
 export default function Sidebar({ collapsed, onToggle }) {
   const pathname = usePathname();
-  const { user, projects } = useApp();
+  const { user, sidebarProjects, projectsLoading, projectsError, loadSidebarProjects } = useApp();
 
   return (
     <aside
@@ -102,29 +101,62 @@ export default function Sidebar({ collapsed, onToggle }) {
                 <Plus className="h-3.5 w-3.5 text-muted-foreground" />
               </Link>
             </div>
-            <div className="space-y-0.5">
-              {projects.slice(0, 5).map((project) => {
-                const isActive = pathname === `/projects/${project.id}`;
-                return (
-                  <Link
-                    key={project.id}
-                    href={`/projects/${project.id}`}
-                    className={cn(
-                      'flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition-all duration-150',
-                      isActive
-                        ? 'bg-accent text-foreground'
-                        : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                    )}
-                  >
-                    <span
-                      className="h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: project.color }}
-                    />
-                    <span className="truncate">{project.name}</span>
-                  </Link>
-                );
-              })}
-            </div>
+
+            {/* Loading state */}
+            {projectsLoading && (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-xs text-muted-foreground">Loading...</span>
+              </div>
+            )}
+
+            {/* Error state */}
+            {projectsError && !projectsLoading && (
+              <div className="px-3 py-2 space-y-2">
+                <div className="flex items-center gap-1.5 text-xs text-red-500">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Failed to load</span>
+                </div>
+                <button
+                  onClick={loadSidebarProjects}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {/* Project list */}
+            {!projectsLoading && !projectsError && (
+              <div className="space-y-0.5">
+                {sidebarProjects.length === 0 ? (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">No projects yet</p>
+                ) : (
+                  sidebarProjects.slice(0, 5).map((project) => {
+                    const isActive = pathname === `/projects/${project._id}`;
+                    return (
+                      <Link
+                        key={project._id}
+                        href={`/projects/${project._id}`}
+                        className={cn(
+                          'flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition-all duration-150',
+                          isActive
+                            ? 'bg-accent text-foreground'
+                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                        )}
+                      >
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: project.color }}
+                        />
+                        <span className="truncate">{project.name}</span>
+                      </Link>
+                    );
+                  })
+                )}
+              </div>
+            )}
           </>
         )}
       </nav>

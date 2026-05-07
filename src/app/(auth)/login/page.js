@@ -45,11 +45,6 @@ export default function LoginPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center space-y-2">
-        <div className="flex justify-center mb-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/25">
-            <span className="text-lg font-bold text-primary-foreground">T</span>
-          </div>
-        </div>
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">Welcome back</h1>
         <p className="text-sm text-muted-foreground">Please enter your details to sign in.</p>
       </div>

@@ -1,10 +1,9 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { fetchSidebarProjects, fetchTasks } from '@/lib/api';
 import {
   currentUser,
-  initialProjects,
-  initialTasks,
   initialWorkers,
   initialActivities,
 } from '@/lib/mock-data';
@@ -13,12 +12,18 @@ const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
   const [user] = useState(currentUser);
-  const [projects, setProjects] = useState(initialProjects);
-  const [tasks, setTasks] = useState(initialTasks);
+  const [sidebarProjects, setSidebarProjects] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [workers, setWorkers] = useState(initialWorkers);
   const [activities, setActivities] = useState(initialActivities);
   const [toasts, setToasts] = useState([]);
   const [theme, setTheme] = useState('light');
+
+  // Loading & error states
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [tasksLoading, setTasksLoading] = useState(true);
+  const [projectsError, setProjectsError] = useState(null);
+  const [tasksError, setTasksError] = useState(null);
 
   // Theme management with localStorage persistence
   useEffect(() => {
@@ -38,6 +43,42 @@ export function AppProvider({ children }) {
     });
   }, []);
 
+  // ─── Fetch sidebar projects from API ────────────────────────────────────────
+  const loadSidebarProjects = useCallback(async () => {
+    try {
+      setProjectsLoading(true);
+      setProjectsError(null);
+      const data = await fetchSidebarProjects();
+      setSidebarProjects(data);
+    } catch (err) {
+      console.error('Failed to load sidebar projects:', err);
+      setProjectsError(err.message);
+    } finally {
+      setProjectsLoading(false);
+    }
+  }, []);
+
+  // ─── Fetch tasks from API ──────────────────────────────────────────────────
+  const loadTasks = useCallback(async () => {
+    try {
+      setTasksLoading(true);
+      setTasksError(null);
+      const data = await fetchTasks();
+      setTasks(data);
+    } catch (err) {
+      console.error('Failed to load tasks:', err);
+      setTasksError(err.message);
+    } finally {
+      setTasksLoading(false);
+    }
+  }, []);
+
+  // Initial data fetch
+  useEffect(() => {
+    loadSidebarProjects();
+    loadTasks();
+  }, [loadSidebarProjects, loadTasks]);
+
   // Toast management
   const addToast = useCallback((message, type = 'success') => {
     const id = Date.now().toString();
@@ -51,36 +92,37 @@ export function AppProvider({ children }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Project CRUD
+  // Project CRUD (local state operations — kept for UI interactions)
   const addProject = useCallback((project) => {
     const newProject = {
       ...project,
       id: `proj-${Date.now()}`,
+      _id: `proj-${Date.now()}`,
       createdAt: new Date().toISOString(),
     };
-    setProjects((prev) => [...prev, newProject]);
+    setSidebarProjects((prev) => [...prev, newProject]);
     addToast(`Project "${project.name}" created`);
     return newProject;
   }, [addToast]);
 
   const updateProject = useCallback((id, updates) => {
-    setProjects((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
+    setSidebarProjects((prev) =>
+      prev.map((p) => (p.id === id || p._id === id ? { ...p, ...updates } : p))
     );
     addToast('Project updated');
   }, [addToast]);
 
   const deleteProject = useCallback((id) => {
-    setProjects((prev) => prev.filter((p) => p.id !== id));
-    setTasks((prev) => prev.filter((t) => t.projectId !== id));
+    setSidebarProjects((prev) => prev.filter((p) => p.id !== id && p._id !== id));
     addToast('Project deleted');
   }, [addToast]);
 
-  // Task CRUD
+  // Task CRUD (local state operations)
   const addTask = useCallback((task) => {
     const newTask = {
       ...task,
       id: `task-${Date.now()}`,
+      _id: `task-${Date.now()}`,
       createdAt: new Date().toISOString(),
     };
     setTasks((prev) => [...prev, newTask]);
@@ -90,18 +132,18 @@ export function AppProvider({ children }) {
 
   const updateTask = useCallback((id, updates) => {
     setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
+      prev.map((t) => (t.id === id || t._id === id ? { ...t, ...updates } : t))
     );
   }, []);
 
   const deleteTask = useCallback((id) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
+    setTasks((prev) => prev.filter((t) => t.id !== id && t._id !== id));
     addToast('Task deleted');
   }, [addToast]);
 
   const moveTask = useCallback((taskId, newStatus) => {
     setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
+      prev.map((t) => (t.id === taskId || t._id === taskId ? { ...t, status: newStatus } : t))
     );
   }, []);
 
@@ -134,8 +176,8 @@ export function AppProvider({ children }) {
   );
 
   const getProjectById = useCallback(
-    (id) => projects.find((p) => p.id === id),
-    [projects]
+    (id) => sidebarProjects.find((p) => p.id === id || p._id === id),
+    [sidebarProjects]
   );
 
   const getWorkerById = useCallback(
@@ -144,21 +186,26 @@ export function AppProvider({ children }) {
   );
 
   const stats = {
-    totalProjects: projects.length,
+    totalProjects: sidebarProjects.length,
     totalTasks: tasks.length,
-    completedTasks: tasks.filter((t) => t.status === 'done').length,
+    completedTasks: tasks.filter((t) => t.status === 'done' || t.completed).length,
     teamMembers: workers.length,
   };
 
   const value = {
     user,
-    projects,
+    projects: sidebarProjects,
+    sidebarProjects,
     tasks,
     workers,
     activities,
     toasts,
     theme,
     stats,
+    projectsLoading,
+    tasksLoading,
+    projectsError,
+    tasksError,
     toggleTheme,
     addToast,
     removeToast,
@@ -174,6 +221,8 @@ export function AppProvider({ children }) {
     getProjectTasks,
     getProjectById,
     getWorkerById,
+    loadSidebarProjects,
+    loadTasks,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

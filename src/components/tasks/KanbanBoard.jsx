@@ -7,7 +7,6 @@ import TaskCard from '@/components/shared/TaskCard';
 import EditTaskModal from '@/components/tasks/EditTaskModal';
 import EmptyState from '@/components/shared/EmptyState';
 import { Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import CreateTaskModal from '@/components/tasks/CreateTaskModal';
 
 const columns = [
@@ -75,23 +74,26 @@ export default function KanbanBoard({ tasks, projectId }) {
                           : 'bg-muted/30'
                       }`}
                     >
-                      {columnTasks.map((task, index) => (
-                        <Draggable key={task.id} draggableId={task.id} index={index}>
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                            >
-                              <TaskCard
-                                task={task}
-                                isDragging={snapshot.isDragging}
-                                onClick={() => setEditingTask(task)}
-                              />
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
+                      {columnTasks.map((task, index) => {
+                        const taskId = task._id || task.id;
+                        return (
+                          <Draggable key={taskId} draggableId={taskId} index={index}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                              >
+                                <TaskCard
+                                  task={task}
+                                  isDragging={snapshot.isDragging}
+                                  onClick={() => setEditingTask(task)}
+                                />
+                              </div>
+                            )}
+                          </Draggable>
+                        );
+                      })}
                       {provided.placeholder}
                     </div>
                   )}

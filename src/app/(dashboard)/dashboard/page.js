@@ -2,7 +2,7 @@
 
 import { useApp } from '@/context/AppContext';
 import { Card, CardContent } from '@/components/ui/card';
-import { FolderKanban, ClipboardList, CheckCircle2, Users, ArrowUpRight, Clock } from 'lucide-react';
+import { FolderKanban, ClipboardList, CheckCircle2, Users, ArrowUpRight, Clock, Loader2 } from 'lucide-react';
 import PriorityBadge from '@/components/shared/PriorityBadge';
 import Link from 'next/link';
 
@@ -17,13 +17,13 @@ const formatRelativeTime = (timestamp) => {
 };
 
 export default function DashboardPage() {
-  const { user, stats, tasks, activities, workers, projects } = useApp();
+  const { user, stats, tasks, activities, workers, sidebarProjects, tasksLoading, projectsLoading } = useApp();
 
   const priorityTasks = tasks
-    .filter((t) => t.status !== 'done')
+    .filter((t) => t.status !== 'done' && !t.completed)
     .sort((a, b) => {
       const order = { high: 0, medium: 1, low: 2 };
-      return order[a.priority] - order[b.priority];
+      return (order[a.priority] ?? 2) - (order[b.priority] ?? 2);
     })
     .slice(0, 4);
 
@@ -33,7 +33,7 @@ export default function DashboardPage() {
       value: stats.totalProjects,
       icon: FolderKanban,
       color: 'text-indigo bg-indigo/10',
-      trend: '+2 this month',
+      trend: `${stats.totalProjects} active`,
     },
     {
       label: 'Total Tasks',
@@ -57,6 +57,8 @@ export default function DashboardPage() {
       trend: 'Across all projects',
     },
   ];
+
+  const isLoading = tasksLoading || projectsLoading;
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8 animate-fade-in">
@@ -82,7 +84,11 @@ export default function DashboardPage() {
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       {stat.label}
                     </p>
-                    <p className="text-3xl font-bold text-foreground">{stat.value}</p>
+                    {isLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    ) : (
+                      <p className="text-3xl font-bold text-foreground">{stat.value}</p>
+                    )}
                     <p className="text-[11px] text-muted-foreground">{stat.trend}</p>
                   </div>
                   <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${stat.color}`}>
@@ -108,12 +114,19 @@ export default function DashboardPage() {
               View all <ArrowUpRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="space-y-3">
-            {priorityTasks.map((task, i) => {
-              const project = projects.find((p) => p.id === task.projectId);
-              return (
+
+          {tasksLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {priorityTasks.length === 0 && (
+                <p className="text-sm text-muted-foreground py-8 text-center">No pending tasks</p>
+              )}
+              {priorityTasks.map((task, i) => (
                 <Card
-                  key={task.id}
+                  key={task._id || task.id}
                   className="rounded-2xl border-border hover:border-primary/30 hover:shadow-md transition-all duration-200 cursor-pointer"
                   style={{ animationDelay: `${i * 80}ms` }}
                 >
@@ -122,14 +135,13 @@ export default function DashboardPage() {
                       <h4 className="text-sm font-medium text-foreground truncate">
                         {task.title}
                       </h4>
-                      {project && (
+                      {task.assigneeName && (
                         <div className="flex items-center gap-1.5 mt-1">
-                          <span
-                            className="h-2 w-2 rounded-full shrink-0"
-                            style={{ backgroundColor: project.color }}
-                          />
+                          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/10 text-primary text-[8px] font-bold">
+                            {task.assigneeInitials}
+                          </span>
                           <span className="text-xs text-muted-foreground truncate">
-                            {project.name}
+                            {task.assigneeName}
                           </span>
                         </div>
                       )}
@@ -137,9 +149,9 @@ export default function DashboardPage() {
                     <PriorityBadge priority={task.priority} />
                   </CardContent>
                 </Card>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Recent Activity */}
